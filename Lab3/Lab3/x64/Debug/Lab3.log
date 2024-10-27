@@ -1,0 +1,3 @@
+﻿  AddressBook.cpp
+C:\Users\User\Documents\Беляш\vs\Lab3\Lab3\AddressBook.cpp(81,48): warning C4267: =: преобразование из "size_t" в "int"; возможна потеря данных
+  Lab3.vcxproj -> C:\Users\User\Documents\Беляш\vs\Lab3\x64\Debug\Lab3.exe
