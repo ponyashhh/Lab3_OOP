@@ -9,13 +9,13 @@ AddressBook::AddressBook(string FileName) : filename(FileName) {}
 
 void AddressBook::addAddress(Address* address) {
     addresses.push_back(address);
-    // Відкриваємо файл для додавання
-    ofstream file(filename, ios::app); // Відкриваємо файл в режимі "додати"
+    // Г‚ВіГ¤ГЄГ°ГЁГўГ ВєГ¬Г® ГґГ Г©Г« Г¤Г«Гї Г¤Г®Г¤Г ГўГ Г­Г­Гї
+    ofstream file(filename, ios::app); // Г‚ВіГ¤ГЄГ°ГЁГўГ ВєГ¬Г® ГґГ Г©Г« Гў Г°ГҐГ¦ГЁГ¬Ві "Г¤Г®Г¤Г ГІГЁ"
     if (file.is_open()) {
-        // Записуємо адресу у файл
+        // Г‡Г ГЇГЁГ±ГіВєГ¬Г® Г Г¤Г°ГҐГ±Гі Гі ГґГ Г©Г«
         cout << endl;
-        file << address->toString() << endl; // Запис у файл
-        file.close(); // Закриваємо файл
+        file << address->toString() << endl; // Г‡Г ГЇГЁГ± Гі ГґГ Г©Г«
+        file.close(); // Г‡Г ГЄГ°ГЁГўГ ВєГ¬Г® ГґГ Г©Г«
     }
     else {
         cerr << "Error: " << filename << endl;
@@ -23,63 +23,118 @@ void AddressBook::addAddress(Address* address) {
 }
 
 void AddressBook::loadAddressesFromFile() {
-    ifstream file(filename); // Відкриваємо файл
-    if (!file.is_open()) { // Перевірка на відкриття
+    ifstream file(filename); // Г‚ВіГ¤ГЄГ°ГЁГўГ ВєГ¬Г® ГґГ Г©Г«
+    if (!file.is_open()) { // ГЏГҐГ°ГҐГўВіГ°ГЄГ  Г­Г  ГўВіГ¤ГЄГ°ГЁГІГІГї
         cerr << "Error: " << filename << endl;
-        return; // Вихід з функції, якщо файл не відкрито
+        return; // Г‚ГЁГµВіГ¤ Г§ ГґГіГ­ГЄГ¶ВіВї, ГїГЄГ№Г® ГґГ Г©Г« Г­ГҐ ГўВіГ¤ГЄГ°ГЁГІГ®
     }
     string line;
-    // Читаємо файл рядок за рядком
+    // Г—ГЁГІГ ВєГ¬Г® ГґГ Г©Г« Г°ГїГ¤Г®ГЄ Г§Г  Г°ГїГ¤ГЄГ®Г¬
     while (getline(file, line)) {
-        cout << line << endl; // Виводимо рядок на екран
+        cout << line << endl; // Г‚ГЁГўГ®Г¤ГЁГ¬Г® Г°ГїГ¤Г®ГЄ Г­Г  ГҐГЄГ°Г Г­
     }
 
-    file.close(); // Закриваємо файл
+    file.close(); // Г‡Г ГЄГ°ГЁГўГ ВєГ¬Г® ГґГ Г©Г«
 }
 
 void AddressBook::analyzeAddresses() {
-
     int privateHouseCount = 0;
     int appartmentCount = 0;
     int buildingCount = 0;
-    map<int, int> appartmentDistribution; // Мапа для розподілу квартир за будинками
+    map<int, int> appartmentDistribution;
 
-    // Аналізуємо лише вибрані адреси
+    // First verify we have selected indices
+    if (selectedIndices.empty()) {
+        cout << "No addresses selected for analysis. Please select addresses first." << endl;
+        return;
+    }
+
+    // Read and process the file to match with selected indices
+    ifstream file(filename);
+    if (!file.is_open()) {
+        cerr << "Error opening file: " << filename << endl;
+        return;
+    }
+
+    string line;
+    vector<string> fileLines;
+
+    // Store all lines from file
+    while (getline(file, line)) {
+        fileLines.push_back(line);
+    }
+    file.close();
+
+    // Process selected addresses
     for (int index : selectedIndices) {
-        if (index >= 0 && index < addresses.size()) { // Перевірка коректності індексу
-            const Address* address = addresses[index];
-            if (address->GetType() == "Private House") {
+        // Check if index is valid for our file lines
+        if (index >= 0 && index < fileLines.size()) {
+            string addressLine = fileLines[index];
+
+            // Parse the address line
+            istringstream iss(addressLine);
+            string addressType;
+            iss >> addressType; // Get first word which should be the type
+
+            if (addressType == "Private" || addressType == "PrivateHouse") {
                 privateHouseCount++;
             }
-            else if (address->GetType() == "Appartment") {
-                const Appartment* appartment = dynamic_cast<const Appartment*>(address);
-                if (appartment) {
-                    appartmentCount++;
-                    appartmentDistribution[appartment->GetBuildingNumber()]++;
+            else if (addressType == "Apartment" || addressType == "Appartment") {
+                appartmentCount++;
+
+                // Extract building number from the address line
+                int buildingNum = 0;
+                string token;
+                while (iss >> token) {
+                    // Try to find building number in the address string
+                    if (isdigit(token[0])) {
+                        buildingNum = stoi(token);
+                        break;
+                    }
+                }
+
+                if (buildingNum > 0) {
+                    appartmentDistribution[buildingNum]++;
                 }
             }
         }
         else {
-            cerr << "Invalid index: " << index << endl; // Обробка недійсного індексу
+            cerr << "Warning: Invalid index " << index << " (out of range)" << endl;
         }
     }
 
-    // Підрахунок кількості будинків (унікальних будинків)
+    // Calculate building count from apartment distribution
     buildingCount = appartmentDistribution.size();
 
-    // Вивід результатів
+    // Output analysis results
+    cout << "\nAnalysis Results:" << endl;
+    cout << "------------------------" << endl;
     cout << "Number of private houses: " << privateHouseCount << endl;
-    cout << "Number of appartments: " << appartmentCount << endl;
+    cout << "Number of apartments: " << appartmentCount << endl;
+    cout << "Number of unique buildings: " << buildingCount << endl;
 
-    // Обчислення середньої кількості квартир на будинок
     if (buildingCount > 0) {
         double averageAppartments = static_cast<double>(appartmentCount) / buildingCount;
-        cout << "Average number of appartments per building: " << averageAppartments << endl;
+        cout << "Average number of apartments per building: " << fixed << setprecision(2)
+            << averageAppartments << endl;
+
+        // Display distribution of apartments per building
+        cout << "\nApartments distribution by building:" << endl;
+        for (const auto& pair : appartmentDistribution) {
+            cout << "Building " << pair.first << ": " << pair.second << " apartment(s)" << endl;
+        }
     }
-    else {
-        cout << "No appartments selected." << endl;
+    else if (appartmentCount > 0) {
+        cout << "Warning: Apartments found but building numbers could not be determined." << endl;
     }
 
+    // Verify all addresses were processed
+    int totalProcessed = privateHouseCount + appartmentCount;
+    if (totalProcessed < selectedIndices.size()) {
+        cout << "\nWarning: " << (selectedIndices.size() - totalProcessed)
+            << " selected address(es) could not be properly analyzed." << endl;
+    }
+    cout << endl;
 }
 
 const vector<Address*>& AddressBook::getAddresses() const {
@@ -101,16 +156,16 @@ void AddressBook::displayAddresses() {
 
     string line;
     int index = 1;
-    // Читаємо файл рядок за рядком та виводимо на екран
+    // Г—ГЁГІГ ВєГ¬Г® ГґГ Г©Г« Г°ГїГ¤Г®ГЄ Г§Г  Г°ГїГ¤ГЄГ®Г¬ ГІГ  ГўГЁГўГ®Г¤ГЁГ¬Г® Г­Г  ГҐГЄГ°Г Г­
     while (getline(file, line)) {
-        cout << index++ << ": " << line << endl; // Нумеруємо адреси
+        cout << index++ << ": " << line << endl; // ГЌГіГ¬ГҐГ°ГіВєГ¬Г® Г Г¤Г°ГҐГ±ГЁ
     }
 
     file.close();
 }
 
 void AddressBook::selectAddressesForMailing() {
-    displayAddresses(); // Виводимо адреси для вибору
+    displayAddresses(); // Г‚ГЁГўГ®Г¤ГЁГ¬Г® Г Г¤Г°ГҐГ±ГЁ Г¤Г«Гї ГўГЁГЎГ®Г°Гі
 
     cout << "Enter the address numbers (separated by a space) that you want to select for the mailing list: ";
     string input;
@@ -119,23 +174,23 @@ void AddressBook::selectAddressesForMailing() {
     istringstream iss(input);
     int number;
 
-    selectedIndices.clear(); // Очищуємо попередні вибори
-    bool validInput = false; // Флаг для перевірки, чи були введені валідні номери
+    selectedIndices.clear(); // ГЋГ·ГЁГ№ГіВєГ¬Г® ГЇГ®ГЇГҐГ°ГҐГ¤Г­Ві ГўГЁГЎГ®Г°ГЁ
+    bool validInput = false; // Г”Г«Г ГЈ Г¤Г«Гї ГЇГҐГ°ГҐГўВіГ°ГЄГЁ, Г·ГЁ ГЎГіГ«ГЁ ГўГўГҐГ¤ГҐГ­Ві ГўГ Г«ВіГ¤Г­Ві Г­Г®Г¬ГҐГ°ГЁ
 
-    // Зчитуємо номери, введені користувачем
+    // Г‡Г·ГЁГІГіВєГ¬Г® Г­Г®Г¬ГҐГ°ГЁ, ГўГўГҐГ¤ГҐГ­Ві ГЄГ®Г°ГЁГ±ГІГіГўГ Г·ГҐГ¬
     while (iss >> number) {
-        // Додаємо до selectedIndices, якщо номер дійсний
+        // Г„Г®Г¤Г ВєГ¬Г® Г¤Г® selectedIndices, ГїГЄГ№Г® Г­Г®Г¬ГҐГ° Г¤ВіГ©Г±Г­ГЁГ©
         if (number > 0) {
-            selectedIndices.push_back(number - 1); // Зберігаємо індекс у форматі 0-індексації
+            selectedIndices.push_back(number - 1); // Г‡ГЎГҐГ°ВіГЈГ ВєГ¬Г® ВіГ­Г¤ГҐГЄГ± Гі ГґГ®Г°Г¬Г ГІВі 0-ВіГ­Г¤ГҐГЄГ±Г Г¶ВіВї
             validInput = true;
         }
     }
 
-    // Перевірка, чи були введені адреси
+    // ГЏГҐГ°ГҐГўВіГ°ГЄГ , Г·ГЁ ГЎГіГ«ГЁ ГўГўГҐГ¤ГҐГ­Ві Г Г¤Г°ГҐГ±ГЁ
     if (validInput) {
         cout << "You have selected addresses with numbers: ";
         for (int index : selectedIndices) {
-            cout << (index + 1) << " "; // Виводимо номери в 1-індексації
+            cout << (index + 1) << " "; // Г‚ГЁГўГ®Г¤ГЁГ¬Г® Г­Г®Г¬ГҐГ°ГЁ Гў 1-ВіГ­Г¤ГҐГЄГ±Г Г¶ВіВї
         }
         cout << endl;
 
